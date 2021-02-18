@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>                      // For the time stamp stuff
-#define DEBUG 0                        // 0: FALSE, 1:TRUE
+#define DEBUG 1                        // 0: FALSE, 1:TRUE
 #define CACHEVIEW 0                        // 1: print the currently cache (data and upper), 0: do not print
 #define BYTES_PER_WORD 1               // All words with 1 Byte (bytes_per_word)
 #define DATA 1
@@ -43,6 +43,10 @@ int startCache(Cache *cache1, int number_of_sets, int associativity) {
  */
 int make_upper(long unsigned address, int words_per_line, int bytes_per_word) {
     int line;
+    # if DEBUG == 1
+    printf("Address: %lu\n", address);
+    # endif
+
     line = ((address/words_per_line))/bytes_per_word;
     return line;
 }
@@ -425,6 +429,14 @@ int main(int argc, char **argv)               // Files are passed by a parameter
             else if (RorW == 'W'){
                 line  = make_upper(address, BYTES_PER_WORD, words_per_line);
                 index = make_index (number_of_sets, line);
+
+                // DEBUG prints
+                #if DEBUG == 1
+                printf("Index: %d\n", index);
+                printf("The line: %lu\n", line);
+                #endif
+
+
                 number_of_writes++;
                 write_cache(&cache_mem, &cache_results, index, line, data, cache_description.associativity, cache_description.replacement_policy);
             }
