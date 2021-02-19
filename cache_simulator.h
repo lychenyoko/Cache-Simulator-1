@@ -48,14 +48,14 @@ typedef struct cache {
 
 /************************ Prototypes of used functions ************************/
 int startCache(Cache *cache1, int number_of_sets, int associativity);
-int make_upper(long unsigned address, int words_per_line, int bytes_per_word);
-int make_index(int number_of_lines_of_cache, long unsigned upper);
+long long unsigned make_upper(long long unsigned address, int words_per_line, int bytes_per_word);
+int make_index(int number_of_lines_of_cache, long long unsigned upper);
 int make_tag(int number_of_lines_of_cache, int associativity);
 int getPosUpper (Cache *cache, int index, long unsigned line, int associativity);
 int there_Are_Space_Set(Cache *cache1, int index1, int associativity);
 int random_free_space_set (Cache *cache1, int index1, int associativity);
 int findLessAccessTSset (Cache *cache1, int index1, int associativity);
-void write_cache (Cache *cache1, Results *result1, int index1, long unsigned line1, int data1, int associativity, char *replacement_policy);
-void read_cache (Cache *cache1, Results *result1, int index1, long unsigned line1, int data1, int associativity, char *replacement_policy);
+void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy);
+void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy);
 void generate_output(Results cache_results, char *output_name);
 /******************************************************************************/

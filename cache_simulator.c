@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>                      // For the time stamp stuff
-#define DEBUG 1                        // 0: FALSE, 1:TRUE
+#define DEBUG 0                        // 0: FALSE, 1:TRUE
 #define CACHEVIEW 0                        // 1: print the currently cache (data and upper), 0: do not print
 #define BYTES_PER_WORD 1               // All words with 1 Byte (bytes_per_word)
 #define DATA 1
@@ -41,10 +41,10 @@ int startCache(Cache *cache1, int number_of_sets, int associativity) {
  * This function get the line (upper) of a given address by the CPU
  * This upper is equal to the Tag information
  */
-int make_upper(long unsigned address, int words_per_line, int bytes_per_word) {
-    int line;
+long long unsigned make_upper(long long unsigned address, int words_per_line, int bytes_per_word) {
+    long long unsigned line;
     # if DEBUG == 1
-    printf("Address: %lu\n", address);
+    printf("Address: %llu\n", address);
     # endif
 
     line = ((address/words_per_line))/bytes_per_word;
@@ -54,7 +54,7 @@ int make_upper(long unsigned address, int words_per_line, int bytes_per_word) {
 /**
  * This function generates the index for the set in the cache
  */
-int make_index (int number_of_sets, long unsigned upper) {
+int make_index (int number_of_sets, long long unsigned upper) {
     int index;
     //printf("NUMBER OF SETS: %d\n", number_of_sets);
     //printf("UPPER: %lu\n", upper);
@@ -131,7 +131,7 @@ int findLessLoadTSset (Cache *cache1, int index1, int associativity) {
     return p_lessLd;
 }
 
-void write_cache (Cache *cache1, Results *result1, int index1, long unsigned line1, int data1, int associativity, char *replacement_policy) {
+void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy) {
     /** Writing the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -211,7 +211,7 @@ void write_cache (Cache *cache1, Results *result1, int index1, long unsigned lin
     }
 }
 
-void read_cache (Cache *cache1, Results *result1, int index1, long unsigned line1, int data1, int associativity, char *replacement_policy) {
+void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy) {
     /** Reading the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -337,10 +337,10 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     int number_of_reads = 0;    // Number of read request operations by the CPU
     int number_of_writes = 0;   // Number of write request operations by the CPU
     /*Informations of each address*/
-    long unsigned address;                      // Address passed by the CPU
+    long long unsigned address;                      // Address passed by the CPU
     int words_per_line;
     int number_of_sets;                         // number_of_lines/associativity
-    long unsigned line;
+    long long unsigned line;
     int index;
     int data = 1;
 
@@ -369,6 +369,11 @@ int main(int argc, char **argv)               // Files are passed by a parameter
 
     words_per_line = cache_description.line_size/BYTES_PER_WORD; // 1 byte is the size of a word in this simulator
     number_of_sets = cache_description.number_of_lines / cache_description.associativity;
+
+    #if DEBUG == 1
+    printf("Words Per Line: %d\n", words_per_line);
+    printf("Number of Sets: %d\n\n", number_of_sets);
+    #endif
 
     /**************** Alloc space for Cache Memory Data ***********************/
     int i;                         // index for the allocation with the loop for
@@ -409,7 +414,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
         return -1;
     }
     else {
-        while (fscanf(ptr_file_input, "%lu %c\n", &address, &RorW) != EOF){
+        while (fscanf(ptr_file_input, "%llu %c\n", &address, &RorW) != EOF){
             currently_clk += 1;                                     // Increment the clock
             //printf("ADDRESS: %lu e RW: %c\n", address, RorW);
             cache_results.acess_count++;
@@ -420,7 +425,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                 // DEBUG prints
                 #if DEBUG == 1
                 printf("Index: %d\n", index);
-                printf("The line: %lu\n", line);
+                printf("The line: %llu\n", line);
                 #endif
 
                 number_of_reads++;
@@ -433,9 +438,8 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                 // DEBUG prints
                 #if DEBUG == 1
                 printf("Index: %d\n", index);
-                printf("The line: %lu\n", line);
+                printf("The line: %llu\n", line);
                 #endif
-
 
                 number_of_writes++;
                 write_cache(&cache_mem, &cache_results, index, line, data, cache_description.associativity, cache_description.replacement_policy);
