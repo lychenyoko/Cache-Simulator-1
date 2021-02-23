@@ -131,7 +131,7 @@ int findLessLoadTSset (Cache *cache1, int index1, int associativity) {
     return p_lessLd;
 }
 
-void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy) {
+void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
     /** Writing the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -194,6 +194,9 @@ void write_cache (Cache *cache1, Results *result1, int index1, long long unsigne
             cache1->T_Access[index1][free_block] = currently_clk; // Update the T_Access
             cache1->T_Load[index1][free_block] = currently_clk;   // Update the T_Load
         }
+
+        // File Writing 
+        fprintf(ptr_file_output, "%llu W miss\n", address);
     }
     /**************************************************************************/
 
@@ -208,10 +211,13 @@ void write_cache (Cache *cache1, Results *result1, int index1, long long unsigne
         cache1->Cache_Upper[index1][position_that_has_this_upper] = line1;
         //cache1->Cache_Data[index1][position_that_has_this_upper] = DATA; // Write the "new" data in the right position at the cache memory
         cache1->T_Access[index1][position_that_has_this_upper] = currently_clk; // Update the T_Access
+
+        // File Writing 
+        fprintf(ptr_file_output, "%llu W HIT\n", address);
     }
 }
 
-void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, int data1, int associativity, char *replacement_policy) {
+void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
     /** Reading the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -273,6 +279,9 @@ void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned
             cache1->T_Access[index1][free_block] = currently_clk; // Update the T_Access
             cache1->T_Load[index1][free_block] = currently_clk;   // Update the T_Load
         }
+
+        // File Writing 
+        fprintf(ptr_file_output, "%llu R miss\n", address);
     }
     /**************************************************************************/
 
@@ -288,20 +297,21 @@ void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned
         //cache1->Cache_Data[index1][position_that_has_this_upper] = DATA;  // Modified bit
         cache1->T_Access[index1][position_that_has_this_upper] = currently_clk; // Update the T_Access
 
+        // File Writing 
+        fprintf(ptr_file_output, "%llu R HIT\n", address);
     }
 }
 
 /**
  * This function generates a formated output with the results of cache simulation
  */
-void generate_output(Results cache_results, char *output_name){
-    FILE *ptr_file_output;
-    ptr_file_output=fopen(output_name, "wb");
+void generate_output(Results cache_results, FILE *ptr_file_output){
 
     if (!ptr_file_output) {
         printf("\nThe file of output can't be writed\n\n");
     }
     else {
+        fprintf(ptr_file_output, "\nSimulation Summary:\n");
         fprintf(ptr_file_output, "Access count:%d\n", cache_results.acess_count);
         fprintf(ptr_file_output, "Read hits:%d\n", cache_results.read_hits);
         fprintf(ptr_file_output, "Read misses:%d\n", cache_results.read_misses);
@@ -343,6 +353,9 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     long long unsigned line;
     int index;
     int data = 1;
+
+    FILE *ptr_file_output;                     // Output File
+    ptr_file_output=fopen(output_name, "wb");
 
     /*********************** Cache Description ********************************/
     ptr_file_specs_cache = fopen(description, "rb");
@@ -429,7 +442,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                 #endif
 
                 number_of_reads++;
-                read_cache(&cache_mem, &cache_results, index, line, data, cache_description.associativity, cache_description.replacement_policy);
+                read_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
             }
             else if (RorW == 'W'){
                 line  = make_upper(address, BYTES_PER_WORD, words_per_line);
@@ -442,7 +455,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                 #endif
 
                 number_of_writes++;
-                write_cache(&cache_mem, &cache_results, index, line, data, cache_description.associativity, cache_description.replacement_policy);
+                write_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
             }
             else {
                 printf("\nUndefined operation request detected\n");
@@ -457,7 +470,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     /**************************************************************************/
 
     /****************************** Output ************************************/
-    generate_output(cache_results, output_name);
+    generate_output(cache_results, ptr_file_output);
     /**************************************************************************/
 
     #if CACHEVIEW == 1
