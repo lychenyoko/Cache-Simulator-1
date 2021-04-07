@@ -432,7 +432,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     }
     else {
         while ((read = getline(&file_input_line, &len, ptr_file_input)) != -1){
-            if (file_input_line[0] == '='){ // the separation flag condition
+            if ((file_input_line[0] == '=') || (file_input_line[0] == '#')) { // the separation flag or the last line
                 fprintf(ptr_file_output, file_input_line);
             }
 
