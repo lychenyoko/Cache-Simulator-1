@@ -343,7 +343,11 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     char *output_name = argv[3];
     FILE *ptr_file_specs_cache;
     FILE *ptr_file_input;
-    char RorW;                  // Read or Write (address)
+    char *file_input_line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char *split_line;
+    char *RorW;                  // Read or Write (address)
     int number_of_reads = 0;    // Number of read request operations by the CPU
     int number_of_writes = 0;   // Number of write request operations by the CPU
     /*Informations of each address*/
@@ -427,45 +431,61 @@ int main(int argc, char **argv)               // Files are passed by a parameter
         return -1;
     }
     else {
-        while (fscanf(ptr_file_input, "%llu %c\n", &address, &RorW) != EOF){
-            currently_clk += 1;                                     // Increment the clock
-            //printf("ADDRESS: %lu e RW: %c\n", address, RorW);
-            cache_results.acess_count++;
-            if (RorW == 'R') {
-                line = make_upper(address, BYTES_PER_WORD, words_per_line);
-                index = make_index (number_of_sets, line);
-
-                // DEBUG prints
-                #if DEBUG == 1
-                printf("Index: %d\n", index);
-                printf("The line: %llu\n", line);
-                #endif
-
-                number_of_reads++;
-                read_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
+        while ((read = getline(&file_input_line, &len, ptr_file_input)) != -1){
+            if (file_input_line[0] == '='){ // the separation flag condition
+                fprintf(ptr_file_output, file_input_line);
             }
-            else if (RorW == 'W'){
-                line  = make_upper(address, BYTES_PER_WORD, words_per_line);
-                index = make_index (number_of_sets, line);
 
-                // DEBUG prints
+            else{ // the actual trace part
+
+                // Parse the file_input_line first
+                split_line = strtok(file_input_line," ");
+                split_line = strtok(NULL, " ,.-");
+                RorW = split_line;
+                
+                split_line = strtok(NULL, " ,.-");
+                address = (unsigned long long)strtol(split_line, NULL, 16);
+
+                // Begin simulation
+                currently_clk += 1;                                     // Increment the clock
+                cache_results.acess_count++;
+                if (RorW[0] == 'R') {
+                    line = make_upper(address, BYTES_PER_WORD, words_per_line);
+                    index = make_index (number_of_sets, line);
+
+                    // DEBUG prints
+                    #if DEBUG == 1
+                    printf("Index: %d\n", index);
+                    printf("The line: %llu\n", line);
+                    #endif
+
+                    number_of_reads++;
+                    read_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
+                }
+                else if (RorW[0] == 'W'){
+                    line  = make_upper(address, BYTES_PER_WORD, words_per_line);
+                    index = make_index (number_of_sets, line);
+
+                    // DEBUG prints
+                    #if DEBUG == 1
+                    printf("Index: %d\n", index);
+                    printf("The line: %llu\n", line);
+                    #endif
+
+                    number_of_writes++;
+                    write_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
+                }
+                else {
+                    printf("\nUndefined operation request detected\n");
+
+                }
+            
+
                 #if DEBUG == 1
-                printf("Index: %d\n", index);
-                printf("The line: %llu\n", line);
+                printf("\nR:%d, W:%d\n", number_of_reads, number_of_writes);
                 #endif
-
-                number_of_writes++;
-                write_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
-            }
-            else {
-                printf("\nUndefined operation request detected\n");
-
             }
         }
-
-        #if DEBUG == 1
-        printf("\nR:%d, W:%d\n", number_of_reads, number_of_writes);
-        #endif
     }
     /**************************************************************************/
 
