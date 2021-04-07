@@ -3,15 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h> 
+
 /******************************************************************************/
 
 /***************************** Structs ****************************************/
 typedef struct results {
-    int acess_count;
+    int access_count;
     int read_hits;
     int read_misses;
     int write_hits;
     int write_misses;
+
+    // ROI part structure
+    int roi_access_count;
+    int roi_read_hits;
+    int roi_read_misses;
+    int roi_write_hits;
+    int roi_write_misses;
 } Results;
 
 typedef struct desc {
@@ -55,7 +64,7 @@ int getPosUpper (Cache *cache, int index, long unsigned line, int associativity)
 int there_Are_Space_Set(Cache *cache1, int index1, int associativity);
 int random_free_space_set (Cache *cache1, int index1, int associativity);
 int findLessAccessTSset (Cache *cache1, int index1, int associativity);
-void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output);
-void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output);
+void write_cache (Cache *cache1, Results *result1, bool roi_flag, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output);
+void read_cache (Cache *cache1, Results *result1, bool roi_flag, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output);
 void generate_output(Results cache_results, FILE *ptr_file_output);
 /******************************************************************************/

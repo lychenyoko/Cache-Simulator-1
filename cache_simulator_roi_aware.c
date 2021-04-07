@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>                      // For the time stamp stuff
+#include <stdbool.h> 
 #define DEBUG 0                        // 0: FALSE, 1:TRUE
 #define CACHEVIEW 0                        // 1: print the currently cache (data and upper), 0: do not print
 #define BYTES_PER_WORD 1               // All words with 1 Byte (bytes_per_word)
@@ -131,7 +132,7 @@ int findLessLoadTSset (Cache *cache1, int index1, int associativity) {
     return p_lessLd;
 }
 
-void write_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
+void write_cache (Cache *cache1, Results *result1, bool roi_flag, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
     /** Writing the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -154,7 +155,9 @@ void write_cache (Cache *cache1, Results *result1, int index1, long long unsigne
           *     used the function there_Are_Space_Set(...).
           */
         result1->write_misses++; // (*result1).write_misses++  this points to the cache_mem in the main
-
+        if (roi_flag){
+            result1->roi_write_misses++;
+        }
         /** It is necessary to know if the set is full (it will use FIFO or LRU
           *     replacement policy) or not.
           */
@@ -208,6 +211,9 @@ void write_cache (Cache *cache1, Results *result1, int index1, long long unsigne
          *     an another data.
          */
         result1->write_hits++;
+        if (roi_flag){
+            result1->roi_write_hits++;
+        }
         cache1->Cache_Upper[index1][position_that_has_this_upper] = line1;
         //cache1->Cache_Data[index1][position_that_has_this_upper] = DATA; // Write the "new" data in the right position at the cache memory
         cache1->T_Access[index1][position_that_has_this_upper] = currently_clk; // Update the T_Access
@@ -217,7 +223,7 @@ void write_cache (Cache *cache1, Results *result1, int index1, long long unsigne
     }
 }
 
-void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
+void read_cache (Cache *cache1, Results *result1, bool roi_flag,  int index1, long long unsigned line1, long long unsigned address, int data1, int associativity, char *replacement_policy, FILE *ptr_file_output) {
     /** Reading the data in the set (by index) in the position that contains the
       *     upper (by line).
       */
@@ -239,6 +245,9 @@ void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned
           *     used the function there_Are_Space_Set(...).
           */
         result1->read_misses++; // (*result1).write_misses++  this points to the cache_mem in the main
+        if (roi_flag){
+            result1->roi_read_misses++;
+        }
 
         /** It is necessary to know if the set is full (it will use FIFO or LRU
           *     replacement policy) or not.
@@ -293,6 +302,10 @@ void read_cache (Cache *cache1, Results *result1, int index1, long long unsigned
          *     an another data.
          */
         result1->read_hits++;
+        if (roi_flag){
+            result1->roi_read_hits++;
+        }
+
         cache1->Cache_Upper[index1][position_that_has_this_upper] = line1;
         //cache1->Cache_Data[index1][position_that_has_this_upper] = DATA;  // Modified bit
         cache1->T_Access[index1][position_that_has_this_upper] = currently_clk; // Update the T_Access
@@ -312,11 +325,18 @@ void generate_output(Results cache_results, FILE *ptr_file_output){
     }
     else {
         fprintf(ptr_file_output, "\nSimulation Summary:\n");
-        fprintf(ptr_file_output, "Access count:%d\n", cache_results.acess_count);
+        fprintf(ptr_file_output, "Access count:%d\n", cache_results.access_count);
         fprintf(ptr_file_output, "Read hits:%d\n", cache_results.read_hits);
         fprintf(ptr_file_output, "Read misses:%d\n", cache_results.read_misses);
         fprintf(ptr_file_output, "Write hits:%d\n", cache_results.write_hits);
         fprintf(ptr_file_output, "Write misses:%d\n", cache_results.write_misses);
+
+        fprintf(ptr_file_output, "\nROI Simulation Summary:\n");
+        fprintf(ptr_file_output, "ROI Access count:%d\n", cache_results.roi_access_count);
+        fprintf(ptr_file_output, "ROI Read hits:%d\n", cache_results.roi_read_hits);
+        fprintf(ptr_file_output, "ROI Read misses:%d\n", cache_results.roi_read_misses);
+        fprintf(ptr_file_output, "ROI Write hits:%d\n", cache_results.roi_write_hits);
+        fprintf(ptr_file_output, "ROI Write misses:%d\n", cache_results.roi_write_misses);
     }
 
     fclose(ptr_file_output);                  // Close the output file (results)
@@ -332,11 +352,17 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     Cache   cache_mem;   // This contains the data, access and load informations
 
     // Init of results
-    cache_results.acess_count = 0;
+    cache_results.access_count = 0;
     cache_results.read_hits = 0;
     cache_results.read_misses = 0;
     cache_results.write_hits = 0;
     cache_results.write_misses = 0;
+
+    cache_results.roi_access_count = 0;
+    cache_results.roi_read_hits = 0;
+    cache_results.roi_read_misses = 0;
+    cache_results.roi_write_hits = 0;
+    cache_results.roi_write_misses = 0;
 
     char *description = argv[1];
     char *input       = argv[2];
@@ -357,6 +383,8 @@ int main(int argc, char **argv)               // Files are passed by a parameter
     long long unsigned line;
     int index;
     int data = 1;
+
+    bool ROI_begin = false;
 
     FILE *ptr_file_output;                     // Output File
     ptr_file_output=fopen(output_name, "wb");
@@ -434,6 +462,9 @@ int main(int argc, char **argv)               // Files are passed by a parameter
         while ((read = getline(&file_input_line, &len, ptr_file_input)) != -1){
             if ((file_input_line[0] == '=') || (file_input_line[0] == '#')) { // the separation flag or the last line
                 fprintf(ptr_file_output, file_input_line);
+                if (file_input_line[0] == '='){
+                    ROI_begin = true;
+                }
             }
 
             else{ // the actual trace part
@@ -448,7 +479,13 @@ int main(int argc, char **argv)               // Files are passed by a parameter
 
                 // Begin simulation
                 currently_clk += 1;                                     // Increment the clock
-                cache_results.acess_count++;
+                cache_results.access_count++;
+
+                // Accumulate ROI statistics
+                if (ROI_begin){
+                    cache_results.roi_access_count++;
+                }
+
                 if (RorW[0] == 'R') {
                     line = make_upper(address, BYTES_PER_WORD, words_per_line);
                     index = make_index (number_of_sets, line);
@@ -460,7 +497,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                     #endif
 
                     number_of_reads++;
-                    read_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
+                    read_cache(&cache_mem, &cache_results, ROI_begin, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
                 }
                 else if (RorW[0] == 'W'){
                     line  = make_upper(address, BYTES_PER_WORD, words_per_line);
@@ -473,7 +510,7 @@ int main(int argc, char **argv)               // Files are passed by a parameter
                     #endif
 
                     number_of_writes++;
-                    write_cache(&cache_mem, &cache_results, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
+                    write_cache(&cache_mem, &cache_results, ROI_begin, index, line, address, data, cache_description.associativity, cache_description.replacement_policy, ptr_file_output);
                 }
                 else {
                     printf("\nUndefined operation request detected\n");
